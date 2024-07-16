@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       situation_id:
-        description: 'Situation ID'
+        description: 'situation_id'
         required: true
         type: integer
       po_amount:
@@ -19,7 +19,7 @@ on:
       attachments:
         description: 'Attachments'
         required: true
-        type: json
+        type: string
 
 jobs:
   process:
@@ -45,9 +45,9 @@ jobs:
       run: |
         python process_attachments.py <<EOF
         {
-          "situation_id": ${{ github.event.inputs.situation_id }},
-          "po_amount": ${{ github.event.inputs.po_amount }},
+          "situation_id": "${{ github.event.inputs.situation_id }}",
+          "po_amount": "${{ github.event.inputs.po_amount }}",
           "email": "${{ github.event.inputs.email }}",
-          "attachments": ${{ github.event.inputs.attachments }}
+          "attachments": "${{ github.event.inputs.attachments }}"
         }
         EOF
