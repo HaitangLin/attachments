@@ -4,6 +4,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import sys
+import base64
 
 # 定义不同情况对应的附件要求
 requirements = {
@@ -28,11 +29,14 @@ def main():
     po_amount = int(sys.argv[3])
     user_email = sys.argv[4]
 
+    print(f"Processing situation_id: {situation_id}, po_amount: {po_amount}, email: {user_email}")
+
     with open(attachments_json, 'r') as f:
         attachments = json.load(f)
 
     # 检查情况ID是否在定义的要求中
     if situation_id not in requirements:
+        print(f"Unknown situation ID: {situation_id}")
         return {'status': 'error', 'message': '未知的情况ID'}
 
     required_attachments = requirements[situation_id]
@@ -52,9 +56,11 @@ def main():
     
     # 如果有缺少的附件，发送邮件并返回错误信息
     if missing_attachments:
+        print(f"Missing attachments: {missing_attachments}")
         send_missing_attachments_email(user_email, missing_attachments)
         return {'status': 'error', 'message': '缺少附件', 'missing_attachments': missing_attachments}
     
+    print("All attachments are present.")
     # 如果所有检查都通过，返回成功信息
     return {'status': 'success', 'message': '所有附件均已上传'}
 
@@ -70,6 +76,8 @@ def send_missing_attachments_email(user_email, missing_attachments):
     text = f'尊敬的客户，\n\n您提交的资料缺少以下附件：\n' + '\n'.join(missing_attachments) + '\n\n请尽快补充。谢谢！'
     part = MIMEText(text, "plain")
     message.attach(part)
+
+    print(f"Sending email to {user_email}")
 
     with smtplib.SMTP("smtp.example.com", 587) as server:
         server.starttls()
