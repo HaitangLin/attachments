@@ -34,14 +34,15 @@ jobs:
       with:
         python-version: '3.x'
 
-    - name: Install dependencies
+    - name: Save attachments and run script
+      id: run_script
       run: |
-        python -m pip install --upgrade pip
-        pip install sendgrid
+        mkdir -p data
+        echo '${{ github.event.inputs.attachments }}' | jq -r '.[] | .name' | while read name; do touch data/$name; done
+        python process_attachments.py data ${{ github.event.inputs.situation_id }} ${{ github.event.inputs.po_amount }}
 
-    - name: Decode attachments and run script
-      env:
-        EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+    - name: Set output
+      id: set_output
       run: |
-        echo '${{ fromJSON(inputs.attachments) }}' | jq -r '.[] | @base64' | while read i; do echo $i | base64 --decode > $(jq -r .name); done
-        python process_attachments.py $(jq -r .name) ${{ github.event.inputs.situation_id }} ${{ github.event.inputs.po_amount }} ${{ github.event.inputs.email }}
+        echo "::set-output name=status::$(cat status.txt)"
+        echo "::set-output name=missing_attachments::$(cat missing_attachments.txt)"
