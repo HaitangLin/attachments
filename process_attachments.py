@@ -1,10 +1,6 @@
 import os
-import json
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 import sys
-import base64
+import shutil
 
 # 定义不同情况对应的附件要求
 requirements = {
@@ -20,24 +16,23 @@ requirements = {
 }
 
 def main():
-    if len(sys.argv) != 5:
-        print("Usage: python process_attachments.py <attachments_json> <situation_id> <po_amount> <email>")
+    if len(sys.argv) != 4:
+        print("Usage: python process_attachments.py <attachments_dir> <situation_id> <po_amount>")
         sys.exit(1)
 
-    attachments_json = sys.argv[1]
+    attachments_dir = sys.argv[1]
     situation_id = int(sys.argv[2])
     po_amount = int(sys.argv[3])
-    user_email = sys.argv[4]
 
-    print(f"Processing situation_id: {situation_id}, po_amount: {po_amount}, email: {user_email}")
-
-    with open(attachments_json, 'r') as f:
-        attachments = json.load(f)
+    print(f"Processing situation_id: {situation_id}, po_amount: {po_amount}")
 
     # 检查情况ID是否在定义的要求中
     if situation_id not in requirements:
         print(f"Unknown situation ID: {situation_id}")
-        return {'status': 'error', 'message': '未知的情况ID'}
+        clean_up(attachments_dir)
+        print('::set-output name=status::0')
+        print('::set-output name=missing_attachments::未知的情况ID')
+        return
 
     required_attachments = requirements[situation_id]
     
@@ -46,7 +41,7 @@ def main():
         required_attachments = [attachment for attachment in required_attachments if attachment != '合同名称及合同']
 
     # 获取所有附件的名称（不包括扩展名）
-    attachment_names = [os.path.splitext(att['name'])[0] for att in attachments]
+    attachment_names = [os.path.splitext(filename)[0] for filename in os.listdir(attachments_dir)]
     
     # 检查每个所需附件是否存在至少一个
     missing_attachments = []
@@ -54,35 +49,32 @@ def main():
         if not any(required_attachment in name for name in attachment_names):
             missing_attachments.append(required_attachment)
     
-    # 如果有缺少的附件，发送邮件并返回错误信息
+    # 清空 data 文件夹
+    clean_up(attachments_dir)
+
+    # 如果有缺少的附件，返回 0 并写入缺少的附件名称
     if missing_attachments:
         print(f"Missing attachments: {missing_attachments}")
-        send_missing_attachments_email(user_email, missing_attachments)
-        return {'status': 'error', 'message': '缺少附件', 'missing_attachments': missing_attachments}
-    
+        print('::set-output name=status::0')
+        print(f"::set-output name=missing_attachments::{', '.join(missing_attachments)}")
+        return
+
     print("All attachments are present.")
-    # 如果所有检查都通过，返回成功信息
-    return {'status': 'success', 'message': '所有附件均已上传'}
+    # 如果所有检查都通过，返回 1
+    print('::set-output name=status::1')
+    print('::set-output name=missing_attachments::')
+    return
 
-def send_missing_attachments_email(user_email, missing_attachments):
-    sender_email = "your-email@example.com"
-    sender_password = os.environ.get('EMAIL_PASSWORD')
-    
-    message = MIMEMultipart("alternative")
-    message["Subject"] = "缺少附件通知"
-    message["From"] = sender_email
-    message["To"] = user_email
-
-    text = f'尊敬的客户，\n\n您提交的资料缺少以下附件：\n' + '\n'.join(missing_attachments) + '\n\n请尽快补充。谢谢！'
-    part = MIMEText(text, "plain")
-    message.attach(part)
-
-    print(f"Sending email to {user_email}")
-
-    with smtplib.SMTP("smtp.example.com", 587) as server:
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.sendmail(sender_email, user_email, message.as_string())
+def clean_up(directory):
+    for filename in os.listdir(directory):
+        file_path = os.path.join(directory, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print(f'Failed to delete {file_path}. Reason: {e}')
 
 if __name__ == "__main__":
     main()
