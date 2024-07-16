@@ -43,7 +43,7 @@ def main():
     # 获取所有附件的名称（不包括扩展名）
     attachment_names = [os.path.splitext(filename)[0] for filename in os.listdir(attachments_dir)]
     
-    # 检查每个所需附件是否存在至少一个
+    # 检查附件
     missing_attachments = []
     for required_attachment in required_attachments:
         if not any(required_attachment in name for name in attachment_names):
