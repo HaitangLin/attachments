@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       situation_id:
-        description: 'situation_id'
+        description: 'Situation ID'
         required: true
-        type: integer
+        type: string
       po_amount:
         description: 'PO Amount'
         required: false
-        type: integer
-        default: 0
+        type: string
+        default: "0"
       email:
         description: 'User Email'
         required: true
@@ -43,11 +43,5 @@ jobs:
       env:
         EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
       run: |
-        python process_attachments.py <<EOF
-        {
-          "situation_id": "${{ github.event.inputs.situation_id }}",
-          "po_amount": "${{ github.event.inputs.po_amount }}",
-          "email": "${{ github.event.inputs.email }}",
-          "attachments": "${{ github.event.inputs.attachments }}"
-        }
-        EOF
+        echo '${{ github.event.inputs.attachments }}' > attachments.json
+        python process_attachments.py attachments.json ${{ github.event.inputs.situation_id }} ${{ github.event.inputs.po_amount }} ${{ github.event.inputs.email }}
