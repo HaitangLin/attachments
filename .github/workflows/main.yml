@@ -39,9 +39,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install sendgrid
 
-    - name: Run script
+    - name: Decode attachments and run script
       env:
         EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
       run: |
-        echo '${{ github.event.inputs.attachments }}' > attachments.json
-        python process_attachments.py attachments.json ${{ github.event.inputs.situation_id }} ${{ github.event.inputs.po_amount }} ${{ github.event.inputs.email }}
+        echo '${{ fromJSON(inputs.attachments) }}' | jq -r '.[] | @base64' | while read i; do echo $i | base64 --decode > $(jq -r .name); done
+        python process_attachments.py $(jq -r .name) ${{ github.event.inputs.situation_id }} ${{ github.event.inputs.po_amount }} ${{ github.event.inputs.email }}
